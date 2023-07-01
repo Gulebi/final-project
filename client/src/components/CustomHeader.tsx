@@ -17,23 +17,38 @@ import { useState } from "react";
 import { IHistoryItem, IProduct } from "../types";
 import { useQuery } from "@tanstack/react-query";
 import apiClient from "../common/api";
-import { useDebouncedState, useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router-dom";
-import { CartDrawer } from ".";
+import { useDebouncedState, useDisclosure, useLocalStorage } from "@mantine/hooks";
+import { Link, useNavigate } from "react-router-dom";
+import { AuthModal, CartDrawer } from ".";
+import { modals } from "@mantine/modals";
 
 function CustomHeader() {
     const [searchValue, setSearchValue] = useDebouncedState("", 200);
     const [currency, setCurrency] = useState<string | null>("USD");
-    const [history, setHistory] = useState<IHistoryItem[]>([
-        { id: 1, text: "jacket" },
-        { id: 2, text: "coat" },
-        { id: 3, text: "SSD" },
-    ]);
-
+    const [currentUserId, setCurrentUserId] = useLocalStorage({ key: "currentUserId", defaultValue: "" });
+    const [searchHistory, setSearchHistory] = useLocalStorage<IHistoryItem[]>({
+        key: "searchHistory",
+        defaultValue: [
+            { id: 1, text: "mollit" },
+            { id: 2, text: "quis" },
+            { id: 3, text: "ipsum" },
+        ],
+    });
     const [drawerOpened, { open: drawerOpen, close: drawerClose }] = useDisclosure(false);
+    const navigate = useNavigate();
 
     const deleteFromHistory = (id: IHistoryItem["id"]) => {
-        setHistory((s) => s.filter((el) => el.id !== id));
+        setSearchHistory((s) => s.filter((el) => el.id !== id));
+    };
+
+    const onOpenAuthModal = () => {
+        modals.open({
+            title: "Auth modal",
+            size: "md",
+            radius: "md",
+            yOffset: "18vh",
+            children: <AuthModal setCurrentUserId={setCurrentUserId} />,
+        });
     };
 
     const { data: searchData } = useQuery({
@@ -74,8 +89,13 @@ function CustomHeader() {
                                                 <Text>No results</Text>
                                             ) : (
                                                 searchData?.map((el) => (
-                                                    <Box className="cursor-pointer">
-                                                        <Text>{el.name}</Text>
+                                                    <Box>
+                                                        <Link
+                                                            to={`/product/${el._id}`}
+                                                            className="text-black no-underline"
+                                                        >
+                                                            <Text>{el.name}</Text>
+                                                        </Link>
                                                     </Box>
                                                 ))
                                             )}
@@ -87,7 +107,7 @@ function CustomHeader() {
                                 </Title>
                                 {history.length ? (
                                     <Stack spacing="none">
-                                        {history.map((el) => (
+                                        {searchHistory.map((el) => (
                                             <Box
                                                 key={el.id}
                                                 className="cursor-pointer flex justify-between items-center"
@@ -114,10 +134,17 @@ function CustomHeader() {
                             w={80}
                         />
                         <ActionIcon size="lg">
-                            <IconHeart size="1.5rem" />
+                            <Indicator inline label="1" size={16} offset={2} disabled={!currentUserId}>
+                                <IconHeart size="1.5rem" />
+                            </Indicator>
                         </ActionIcon>
-                        <ActionIcon size="lg">
-                            <IconUser size="1.5rem" />
+                        <ActionIcon
+                            size="lg"
+                            onClick={() => (currentUserId ? navigate("/profile") : onOpenAuthModal())}
+                        >
+                            <Indicator inline label="1" size={16} offset={2} disabled={!currentUserId}>
+                                <IconUser size="1.5rem" />
+                            </Indicator>
                         </ActionIcon>
                         <ActionIcon size="lg" onClick={drawerOpen}>
                             <Indicator inline label="1" size={16} offset={2}>

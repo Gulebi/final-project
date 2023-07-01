@@ -1,5 +1,5 @@
 import { createBrowserRouter } from "react-router-dom";
-import { MainPage, ErrorPage, CategoryPage } from "./routes";
+import { MainPage, ErrorPage, CategoryPage, ProductPage, ProfilePage, AdminPage } from "./routes";
 
 const router = createBrowserRouter([
     {
@@ -8,8 +8,20 @@ const router = createBrowserRouter([
         errorElement: <ErrorPage />,
     },
     {
-        path: "/category/:categoryName",
+        path: "/profile",
+        element: <ProfilePage />,
+    },
+    {
+        path: "/admin",
+        element: <AdminPage />,
+    },
+    {
+        path: "/category/:categoryId",
         element: <CategoryPage />,
+    },
+    {
+        path: "/product/:productId",
+        element: <ProductPage />,
     },
 ]);
 

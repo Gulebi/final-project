@@ -1,28 +1,40 @@
 import { Router, Request } from "express";
-import { CategoryModel, ProductModel } from "../Models";
-import { IGetProductsReq } from "../types";
+import { ProductModel } from "../Models";
+import { SortOrder, Types } from "mongoose";
+import { IProductAddReq } from "../types";
 
 const router = Router();
 
-router.get("/", async (req: Request<object, object, object, IGetProductsReq>, res) => {
-    try {
-        res.set("Content-Type", "application/json");
+router.get(
+    "/",
+    async (
+        req: Request<
+            object,
+            object,
+            object,
+            { page: number; limit: number; sortField: string; dir: SortOrder; search: string }
+        >,
+        res
+    ) => {
+        try {
+            res.set("Content-Type", "application/json");
 
-        const { page = 1, limit = 10, sortField = "name", dir = "asc", search = "" } = req.query;
+            const { page = 1, limit = 10, sortField = "name", dir = "asc", search = "" } = req.query;
 
-        const products = await ProductModel.find({ name: { $regex: search } })
-            .limit(limit * 1)
-            .skip((page - 1) * limit)
-            .sort({ [sortField]: dir });
+            const products = await ProductModel.find({ name: { $regex: search } })
+                .limit(limit * 1)
+                .skip((page - 1) * limit)
+                .sort({ [sortField]: dir });
 
-        const count = await ProductModel.countDocuments({ name: { $regex: search } });
+            const count = await ProductModel.countDocuments({ name: { $regex: search } });
 
-        return res.status(200).send({ message: "Success", data: { products, count } });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).send({ message: "Error", data: error });
+            return res.status(200).send({ message: "Success", data: { products, count } });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).send({ message: "Error", data: error });
+        }
     }
-});
+);
 
 router.post("/search", async (req: Request<object, object, { search: string }, object>, res) => {
     try {
@@ -54,24 +66,40 @@ router.get("/byId/:id", async (req, res) => {
     }
 });
 
-router.post("/byCategory", async (req: Request<object, object, { category: string }, object>, res) => {
-    try {
-        res.set("Content-Type", "application/json");
+router.get(
+    "/byCategoryId/:categoryId",
+    async (
+        req: Request<
+            { categoryId: string },
+            object,
+            object,
+            { page: number; limit: number; sortField: string; dir: SortOrder }
+        >,
+        res
+    ) => {
+        try {
+            res.set("Content-Type", "application/json");
 
-        const { category } = req.body;
+            const { page = 1, limit = 10, sortField = "rating", dir = "desc" } = req.query;
 
-        const products = await ProductModel.find({ category: category });
+            const { categoryId } = req.params;
 
-        const count = await ProductModel.countDocuments({ category: category });
+            const products = await ProductModel.find({ "category._id": new Types.ObjectId(categoryId) })
+                .limit(limit * 1)
+                .skip((page - 1) * limit)
+                .sort({ [sortField]: dir });
 
-        return res.status(200).send({ message: "Success", data: { products, count: count } });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).send({ message: "Error" });
+            const count = await ProductModel.countDocuments({ "category._id": new Types.ObjectId(categoryId) });
+
+            return res.status(200).send({ message: "Success", data: { products, count } });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).send({ message: "Error" });
+        }
     }
-});
+);
 
-router.post("/add", async (req, res) => {
+router.post("/add", async (req: Request<object, object, IProductAddReq, object>, res) => {
     try {
         res.set("Content-Type", "application/json");
 
@@ -82,7 +110,7 @@ router.post("/add", async (req, res) => {
             category,
             price,
             discount,
-            discountPrice,
+            originalPrice,
             currency,
             rating,
             numOfReviews,
@@ -91,47 +119,25 @@ router.post("/add", async (req, res) => {
         } = req.body;
 
         const mRes = await ProductModel.create({
+            _id: new Types.ObjectId(),
             name,
             imageUrl,
             description,
-            category,
-            price,
-            discount,
-            discountPrice,
-            currency,
+            category: {
+                _id: new Types.ObjectId(category._id),
+                name: category.name,
+            },
+            priceData: {
+                price,
+                discount,
+                originalPrice,
+                currency,
+            },
             rating,
             numOfReviews,
             quantity,
             manufacturer,
         });
-
-        return res.status(201).send({ message: "Success", data: mRes });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).send({ message: "Error" });
-    }
-});
-
-router.get("/categories", async (req, res) => {
-    try {
-        res.set("Content-Type", "application/json");
-
-        const mRes = await CategoryModel.find({});
-
-        return res.status(200).send({ message: "Success", data: mRes });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).send({ message: "Error" });
-    }
-});
-
-router.post("/addCategory", async (req, res) => {
-    try {
-        res.set("Content-Type", "application/json");
-
-        const { name } = req.body;
-
-        const mRes = await CategoryModel.create({ name });
 
         return res.status(201).send({ message: "Success", data: mRes });
     } catch (error) {
